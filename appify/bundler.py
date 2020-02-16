@@ -53,7 +53,7 @@ def generate_bundle(
     executable_path = bin_dir / executable_name
     print(f"Copying {original_executable}")
     shutil.copy(original_executable, executable_path)
-    os.chmod(executable_path, os.stat(executable_path).st_mode | stat.S_IXUSR)
+    os.chmod(executable_path, 0o744)  # RWXR--R--
 
     required_fixups = []
     fixup_targets = {str(executable_path)}
