@@ -55,18 +55,22 @@ def generate_bundle(
     os.chmod(executable_path, os.stat(executable_path).st_mode | stat.S_IXUSR)
 
     required_fixups = []
+    fixup_targets = {str(executable_path)}
     for lib in required_libraries:
         libname = os.path.basename(lib)
         target = lib_dir / libname
+        print(f"Copying {lib}")
         if target.exists():
-            print(f"Warning, duplicate libname {libname}")
-        else:
-            print(f"Copying {lib}")
-            shutil.copy(lib, target)
+            print(f"Removing existing {target} first.")
+            target.unlink()
+        shutil.copy(lib, target)
+        os.chmod(target, os.stat(target).st_mode | stat.S_IWUSR)
         required_fixups.extend(
             ["-change", str(lib), f"@rpath/{libname}",]
         )
+        fixup_targets.add(str(target))
+    print(f"Running fixups...")
     required_fixups.extend(["-add_rpath", "@executable_path"])
-    command_line = ["install_name_tool"] + required_fixups + [str(executable_path)]
-    print(f'Running fixups: {" ".join(command_line)}')
-    subprocess.check_call(command_line)
+    for fixup_target in fixup_targets:
+        command_line = ["install_name_tool"] + required_fixups + [fixup_target]
+        subprocess.check_call(command_line)
