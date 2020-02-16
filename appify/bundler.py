@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from appify.icons import generate_icns
+from appify.scan import scan_libraries, smells_private
 
 
 def generate_bundle(
@@ -59,10 +60,11 @@ def generate_bundle(
     for lib in required_libraries:
         libname = os.path.basename(lib)
         target = lib_dir / libname
-        print(f"Copying {lib}")
         if target.exists():
-            print(f"Removing existing {target} first.")
+            print(f"Copying {lib} – replacing existing {target}")
             target.unlink()
+        else:
+            print(f"Copying {lib}")
         shutil.copy(lib, target)
         os.chmod(target, os.stat(target).st_mode | stat.S_IWUSR)
         required_fixups.extend(
@@ -74,3 +76,12 @@ def generate_bundle(
     for fixup_target in fixup_targets:
         command_line = ["install_name_tool"] + required_fixups + [fixup_target]
         subprocess.check_call(command_line)
+    print(f"Verifying fixups...")
+    for fixup_target in fixup_targets:
+        bad_deps = {
+            lib
+            for lib in scan_libraries(fixup_target)
+            if not (smells_private(lib) or lib.startswith("@rpath"))
+        }
+        if bad_deps:
+            print(f"{fixup_target} may still have bad deps: {bad_deps}")
