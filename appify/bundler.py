@@ -1,6 +1,7 @@
 import os
 import plistlib
 import shutil
+import stat
 import subprocess
 from pathlib import Path
 from typing import List, Optional
@@ -51,6 +52,8 @@ def generate_bundle(
     executable_path = bin_dir / executable_name
     print(f"Copying {original_executable}")
     shutil.copy(original_executable, executable_path)
+    os.chmod(executable_path, os.stat(executable_path).st_mode | stat.S_IXUSR)
+
     required_fixups = []
     for lib in required_libraries:
         libname = os.path.basename(lib)
